@@ -1870,16 +1870,13 @@ const VOZ = {
     s.buffer = b; s.connect(g); g.connect(AUD.master); s.start(); return b.duration;
   },
   bobI: 0,
-  bobLines: [{clip: 'entrega_bob'}, {tts: 'Receeeba!'}, {tts: 'Rebola, sua grávida!'}, {tts: 'Vai tomar, tomando!'}],
+  bobLines: [{clip: 'entrega_bob'}, {clip: 'entrega'}],
   bobSay(now) {
-    // falas do Bob: "Entreeega" com a voz gravada, as outras com a voz do aparelho (até chegarem os áudios dele)
+    // falas do Bob: por enquanto só os áudios gravados ("Entreeega" esticado e "Entrega")
     const L = this.bobLines[this.bobI++ % this.bobLines.length];
     if (this.bobI % this.bobLines.length === 0) this.bobLines.sort(() => Math.random() - .5);
     if (L.clip) { const d = this.play(L.clip, 1.15); if (d) { this.until = now + d * 1000 + 600; return; } }
-    if (L.tts && this.tts) {
-      this.until = now + 2300;
-      try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(L.tts); u.lang = 'pt-BR'; if (this.voice) u.voice = this.voice; u.rate = 1.12; u.pitch = 1.25; speechSynthesis.speak(u); } catch (e) { this.tts = false; }
-    }
+    this.load();
   },
   say() {
     if (!this.on || !AUD.on || !AUD.ctx || G.bot || G.state !== 'play') return;
@@ -1887,11 +1884,7 @@ const VOZ = {
     if (P && P.char === 'bob') { this.bobSay(now); return; }
     const d = this.play('entrega');
     if (d) { this.until = now + d * 1000 + 120; return; }
-    if (this.tts) {
-      this.until = now + 1100;
-      try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance('Entrega!'); u.lang = 'pt-BR'; if (this.voice) u.voice = this.voice; u.rate = 1.2; u.pitch = .75; speechSynthesis.speak(u); } catch (e) { this.tts = false; }
-      this.load();
-    }
+    this.load(); // só áudios gravados, nada de voz sintética
   },
   levelUp(level) {
     if (!this.on || !AUD.on || !AUD.ctx || G.bot) return;
