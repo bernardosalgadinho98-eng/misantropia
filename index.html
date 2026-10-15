@@ -2695,7 +2695,7 @@ async function submitScore() {
   const out = $('#overRank'); out.textContent = 'Enviando pro ranking…';
   const pos = await RANK.submit(row);
   if (pos) { out.innerHTML = ''; out.append(`${row.p.toLocaleString('pt-BR')} pontos · `); const b = document.createElement('b'); b.textContent = pos + 'º lugar'; out.append(b, ' no ranking geral'); }
-  else out.textContent = `${row.p.toLocaleString('pt-BR')} pontos · ranking online fora do ar, salvo só neste aparelho`;
+  else out.textContent = `${row.p.toLocaleString('pt-BR')} pontos · ` + (RANK_ID ? 'ranking online fora do ar, salvo só neste aparelho' : 'salvo no ranking deste aparelho');
 }
 let rankTab = 'all', rankFrom = '#scrTitle';
 async function openRank(from) {
@@ -2707,7 +2707,7 @@ function renderRank() {
   $('#rankTabs').innerHTML = tabs.map(([k, n]) => `<button data-t="${k}" class="${k === rankTab ? 'on' : ''}">${n}</button>`).join('');
   $('#rankTabs').querySelectorAll('button').forEach(b => b.onclick = () => { rankTab = b.dataset.t; SFX.click(); renderRank(); });
   if (!RANK.list) { $('#rankList').innerHTML = '<div class="rkempty">Carregando…</div>'; return; }
-  $('#rankSub').textContent = RANK.online ? 'Recordes de toda a galera' : 'Sem conexão com o ranking online: mostrando só este aparelho';
+  $('#rankSub').textContent = RANK.online ? 'Recordes de toda a galera' : RANK_ID ? 'Sem conexão com o ranking online: mostrando só este aparelho' : 'Recordes deste aparelho';
   const me = cleanName(store.get('name', '')).toLowerCase();
   const rows = RANK.list.filter(r => rankTab === 'all' || r.c === rankTab).slice(0, 50);
   const box = $('#rankList'); box.innerHTML = '';
