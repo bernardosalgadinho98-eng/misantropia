@@ -2905,7 +2905,12 @@ window.__hsf = {
    ==================================================================== */
 (() => {
   if (!document.querySelector('link[rel="manifest"]') || location.protocol === 'file:') return;
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    const hadCtl = !!navigator.serviceWorker.controller; let reloaded = false;
+    navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(r => r.update()).catch(() => {});
+    // versão nova do jogo instalada: recarrega sozinho se ainda estiver no menu
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtl && !reloaded && G.state === 'title') { reloaded = true; location.reload(); } });
+  }
   const standalone = matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone;
   if (standalone) return;
   let deferred = null;
