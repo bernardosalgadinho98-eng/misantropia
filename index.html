@@ -1965,13 +1965,14 @@ const VOZ = {
     const c = AUD.ctx, s = c.createBufferSource(), g = c.createGain(); g.gain.value = vol;
     s.buffer = b; s.connect(g); g.connect(AUD.master); s.start(); return b.duration;
   },
+  gap() { return 5000 + Math.random() * 2000; }, // fala de ataque no máximo a cada 5–7 s
   bobI: 0,
   bobLines: [{clip: 'entrega_bob'}, {clip: 'entrega'}],
   bobSay(now) {
     // falas do Bob: por enquanto só os áudios gravados ("Entreeega" esticado e "Entrega")
     const L = this.bobLines[this.bobI++ % this.bobLines.length];
     if (this.bobI % this.bobLines.length === 0) this.bobLines.sort(() => Math.random() - .5);
-    if (L.clip) { const d = this.play(L.clip, 1.15); if (d) { this.until = now + d * 1000 + 600; return; } }
+    if (L.clip) { const d = this.play(L.clip, 1.15); if (d) { this.until = now + this.gap(); return; } }
     this.load();
   },
   say() {
@@ -1979,7 +1980,7 @@ const VOZ = {
     const now = performance.now(); if (now < this.until) return;
     if (P && P.char === 'bob') { this.bobSay(now); return; }
     const d = this.play('entrega');
-    if (d) { this.until = now + d * 1000 + 120; return; }
+    if (d) { this.until = now + this.gap(); return; }
     this.load(); // só áudios gravados, nada de voz sintética
   },
   levelUp(level) {
@@ -1988,7 +1989,7 @@ const VOZ = {
     if (level % 5 !== 0) { const opts = ['gagueira', 'esquilo', 'demonio', 'buzina'].filter(x => x !== this.lastLv); k = pick(opts); }
     this.lastLv = k;
     const d = this.play(k, 1.15);
-    if (d) this.until = performance.now() + d * 1000 + 150; // o "Entrega!" espera o corte terminar
+    if (d) this.until = Math.max(this.until, performance.now() + d * 1000 + 150); // o "Entrega!" espera o corte terminar
   },
   toggle() { this.on = !this.on; store.set('voz', this.on); syncButtons(); },
 };
