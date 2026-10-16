@@ -45,6 +45,8 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   padding-top:env(safe-area-inset-top,0px)}
 #xpfill{height:100%;width:0;background:linear-gradient(90deg,#2f7dff,var(--arcane));box-shadow:0 0 12px rgba(95,225,255,.6);transition:width .12s linear}
 #lvl{position:absolute;right:var(--gr);top:calc(var(--gt) + 10px);font-weight:800;font-size:15px;letter-spacing:.06em;color:var(--arcane);text-shadow:0 2px 0 #000}
+#phaseTag{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--gt) + 46px);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);text-shadow:0 2px 0 #000,0 0 10px #000;white-space:nowrap}
+@media (max-width:640px){#phaseTag{top:calc(var(--gt) + 36px);font-size:10.5px}}
 #timer{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--gt) + 8px);font-weight:800;font-size:32px;letter-spacing:.04em;text-shadow:0 3px 0 #000,0 0 18px rgba(0,0,0,.8)}
 #stats{position:absolute;right:var(--gr);top:calc(var(--gt) + 32px);display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-weight:700;font-size:16px;text-shadow:0 2px 0 #000}
 #stats span{display:flex;align-items:center;gap:6px}
@@ -55,7 +57,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .slot svg{width:20px;height:20px}
 .slot.p{width:24px;height:24px}.slot.p svg{width:15px;height:15px}
 .slot b{position:absolute;right:-3px;bottom:-4px;font-size:11px;font-weight:800;background:#000;border-radius:4px;padding:0 3px;color:var(--gold)}
-#boss{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--gt) + 52px);width:min(420px,70vw);text-align:center}
+#boss{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--gt) + 66px);width:min(420px,70vw);text-align:center}
 #bossname{font-family:var(--f-display);font-size:22px;color:#ffb3a6;text-shadow:0 2px 0 #000;letter-spacing:.04em}
 #bossbar{height:10px;border-radius:5px;background:rgba(40,8,16,.9);border:1px solid #6b1f2c;overflow:hidden}
 #bossfill{height:100%;width:100%;background:linear-gradient(90deg,#b0122e,#ff4d5e)}
@@ -238,6 +240,7 @@ h2{font-size:clamp(36px,7vw,60px);color:var(--gold);filter:drop-shadow(0 4px 0 #
   <div id="xpbar"><div id="xpfill"></div></div>
   <div id="lvl" class="num">NV 1</div>
   <div id="timer" class="num">00:00</div>
+  <div id="phaseTag"></div>
   <div id="stats" class="num"><span id="kills">0</span><span id="gold">0</span></div>
   <div id="slots"><div class="slotrow" id="wslots"></div><div class="slotrow" id="pslots"></div></div>
   <div id="boss" hidden><div id="bossname"></div><div id="bossbar"><div id="bossfill"></div></div></div>
@@ -1457,7 +1460,7 @@ function hitEnemy(e, dmg, wid, kx = 0, kz = 0, kb = 0) {
   G.dmgBy[wid] = (G.dmgBy[wid] || 0) + Math.min(dmg, e.hp + dmg);
   if (kb && !e.boss) { const l = Math.hypot(kx, kz) || 1; e.kx += kx / l * kb / e.mass; e.kz += kz / l * kb / e.mass; }
   dmgNum(e.x, (e.boss ? 2.6 : 1.4) * e.scale, e.z, Math.round(dmg), crit);
-  SFX.hit(); VOZ.say();
+  SFX.hit(); VOZ.say(); P.atkT = .08;
   if (P.char === 'gabi' && !P.gstate && G.state === 'play' && G.t > (P.calmUntil || 0)) { P.hype += .4; if (P.hype >= 100) setGabi('bagunca'); }
   if (e.hp <= 0) killEnemy(e);
 }
@@ -1510,7 +1513,7 @@ function hurtPlayer(dmg, src) {
     P.stress = P.stress.filter(t => G.t - t < 8); P.stress.push(G.t);
     if (P.stress.length >= 3 && P.gstate !== 'estressada') { P.stress = []; setGabi('estressada'); }
   }
-  dmg = Math.max(1, dmg - P.armor);
+  dmg = Math.max(1, dmg - P.armor); P.hurtT = .22;
   if (P.char === 'duo' && (P.kstate === 'dormiu' || P.nap)) { dmg *= .5; if (P.nap) { P.idleT = 0; P.nap = false; dmgNum(P.x, 2.4, P.z, 'ACORDOU!', false, 'h'); } }
   P.hp -= dmg; P.inv = .5; G.hurtFlash = .35; shake(.35);
   dmgNum(P.x, 1.9, P.z, Math.round(dmg), false, 'h');
@@ -2127,6 +2130,8 @@ function update(dt) {
   P.x += mx * P.speed * dt * mv; P.z += mz * P.speed * dt * mv;
   if (!mv) P.moving = 0;
   if (G.phaseAt && G.t >= G.phaseAt) { G.phaseAt = 0; setPhase(Math.min(PHASES.length - 1, (G.phase || 0) + 1)); }
+  const byTime = Math.min(PHASES.length - 1, Math.floor(G.t / 150));
+  if (byTime > (G.phase || 0) && !G.phaseAt) setPhase(byTime);
   collidePillars(P, .45);
   P.inv -= dt;
   if (P.regen) { P.regenAcc += P.regen * dt; if (P.regenAcc >= 1) { const h = Math.floor(P.regenAcc); P.regenAcc -= h; P.hp = Math.min(P.maxHp, P.hp + h); } }
@@ -2278,13 +2283,25 @@ function render(dt) {
     const hb = HB[P.char] || HB.rezende;
     const want = Math.atan2(P.fx, P.fz); let d = want - P.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); P.yaw += d * Math.min(1, dt * 14);
     if (P.char === 'gabi' && (P.gstate === 'bagunca' || G.state === 'title') && P.moving < .1) P.yaw += dt * (G.state === 'title' ? 2.5 : 9);
+    const prevStep = Math.floor(P.bob / Math.PI);
     P.bob += dt * 12 * P.moving;
-    const by = Math.abs(Math.sin(P.bob)) * .1 * P.moving, blink = P.inv > 0 && (t * 20 | 0) % 2 === 0;
+    // poeirinha a cada passo
+    if (G.state === 'play' && P.moving > .3 && Math.floor(P.bob / Math.PI) !== prevStep) spark(P.x - P.fx * .25 + rand(-.1, .1), .08, P.z - P.fz * .25, [.42, .36, .5], .45, .45, -P.fx * .8, .5, -P.fz * .8);
+    let by = Math.abs(Math.sin(P.bob)) * .1 * P.moving;
+    const blink = P.inv > 0 && (t * 20 | 0) % 2 === 0;
+    // ginga ao correr, respiração parado, susto ao apanhar, pulo e giro ao subir de nível, dancinha na vitória
+    let ay = Math.sin(P.bob) * .14 * P.moving, sqx = 1, sqy = 1;
+    const land = 1 - Math.abs(Math.sin(P.bob)); if (P.moving > .3) { sqy = 1 - land * .07; sqx = 1 + land * .05; }
+    if (P.moving < .1) sqy *= 1 + Math.sin(t * 2.4) * .025;
+    if (P.hurtT > 0) { P.hurtT -= dt; sqy *= .86; sqx *= 1.12; ay += rand(-.25, .25); }
+    if (P.atkT > 0) { P.atkT -= dt; sqx *= 1.04; }
+    if (P.spinT > 0) { P.spinT -= dt; const f = 1 - P.spinT / .7; ay += f * 6.283; by += Math.sin(f * Math.PI) * .6; }
+    if (G.state === 'over' && G.won) { ay += t * 5; by += Math.abs(Math.sin(t * 7)) * .35; }
     const vis = G.state !== 'over' || G.won;
     if (vis) {
       const ps = P.char === 'duo' ? .92 : P.char === 'neguinho' ? .7 : 1, breathe = P.char === 'duo' && (P.nap || P.kstate === 'dormiu') ? 1 + Math.sin(t * 2.5) * .03 - .06 : 1;
       const jx = P.trem > 0 ? rand(-.06, .06) : 0, jz = P.trem > 0 ? rand(-.06, .06) : 0;
-      hb.add(P.x + jx, by, P.z + jz, P.yaw + (P.trem > 0 ? rand(-.15, .15) : 0), ps, ps * (1 - by * .3) * breathe, ps, blink ? 3 : 1, blink ? 3 : 1, blink ? 3 : 1, 0);
+      hb.add(P.x + jx, by, P.z + jz, P.yaw + ay + (P.trem > 0 ? rand(-.15, .15) : 0), ps * sqx, ps * sqy * breathe, ps * sqx, blink ? 3 : 1, blink ? 3 : 1, blink ? 3 : 1, 0);
       if (P.char === 'duo' && G.state !== 'title') {
         if (trip) { const hc = ks === 'voando' ? [.75, .45, 1] : [1, .4, .75]; decalB.push(P.x, P.z, 1.25, .25, hc[0], hc[1], hc[2], .8 + Math.sin(t * 6) * .2); glowB.push(P.x, 2.3, P.z, 2.2, hc[0] * .3, hc[1] * .3, hc[2] * .3); }
         else if (ks === 'travou') decalB.push(P.x, P.z, 1.1, .2, .6, .65, .75, .7);
@@ -2340,7 +2357,8 @@ function render(dt) {
     else if (e.mesh === 'eye') y = .15 + Math.sin(ph * 2.5) * .15;
     else if (e.mesh === 'reaper') y = .25 + Math.sin(ph * 2) * .2;
     else if (COPS.includes(e.mesh)) y = Math.abs(Math.sin(ph * 8)) * .07;
-    let yaw = e.yaw;
+    let yaw = e.yaw + (e.boss ? 0 : Math.sin(ph * 8) * .13);
+    if (e.flash > 0) { sx *= 1.14; sz *= 1.14; sy *= .88; }
     if (trip) {
       // as duas veem os bichos tortos
       const k = ks === 'derreteu' ? 1 : .55;
@@ -2471,6 +2489,7 @@ function updateDom(dt) {
   $('#xpfill').style.width = (clamp(P.xp / xpNeed(P.level), 0, 1) * 100).toFixed(1) + '%';
   setText('#lvl', 'NV ' + P.level);
   setText('#timer', fmtT(G.t));
+  setText('#phaseTag', 'Fase ' + ((G.phase || 0) + 1) + ' · ' + PHASES[G.phase || 0].name);
   setHTML('#kills', svg('skull') + G.kills);
   setHTML('#gold', svg('coin') + G.gold);
   const [hx, hy] = project(P.x, -.15, P.z);
@@ -2569,7 +2588,7 @@ function chooseCard(i) {
   const o = curOpts[i]; if (!o || G.state !== 'levelup') return;
   applyUpgrade(o); SFX.click(); G.pendingLv--;
   if (G.pendingLv > 0) { curOpts = upgradeOptions(3); if (curOpts.length) { renderCards(); return; } G.pendingLv = 0; }
-  showScreen(null); G.state = 'play'; AUD.music(true);
+  showScreen(null); G.state = 'play'; AUD.music(true); P.spinT = .7;
 }
 // --- pausa
 function pauseGame() {
@@ -2771,6 +2790,23 @@ const SFX = {
   click() { if (this.ok('click', .05)) AUD.blip(880, .05, 'square', .05); },
   hack() { if (this.ok('hack', .5)) for (let i = 0; i < 6; i++) AUD.blip(rand(600, 1800), .05, 'square', .05, null, i * .05); },
   ddos() { if (this.ok('ddos', .2)) for (let i = 0; i < 4; i++) AUD.blip(rand(1400, 2400), .03, 'square', .03, null, i * .03); },
+  // vinhetas de ataque que revezam com as falas
+  stingI: -1,
+  sting() {
+    if (!AUD.ctx || !AUD.on) return;
+    let i; do { i = Math.random() * 8 | 0; } while (i === this.stingI); this.stingI = i;
+    const B = (f, d, ty, v, f2, w) => AUD.blip(f, d, ty, v, f2, w), N = (d, v, f, w, f2) => AUD.noise(d, v, f, w, f2);
+    [
+      () => { for (let k = 0; k < 3; k++) { B(466, .13, 'sawtooth', .07, 440, k * .16); B(470, .13, 'square', .04, 445, k * .16); } }, // buzina de funk
+      () => { B(180, .09, 'sine', .14, 620); B(620, .14, 'sine', .1, 200, .09); }, // boing
+      () => { B(90, .16, 'sine', .4, 40); N(.08, .25, 1800, 0, 300); }, // soco
+      () => { B(120, .12, 'sine', .45, 45); N(.04, .08, 9000, .17); B(120, .12, 'sine', .4, 45, .34); N(.05, .1, 9000, .5); }, // tum-tss
+      () => { B(1400, .14, 'square', .05, 160); }, // laser
+      () => { N(.03, .3, 7000, 0); B(1200, .05, 'triangle', .05, 300, .02); }, // chicote
+      () => { B(1319, .06, 'square', .05); B(1760, .1, 'square', .05, null, .06); B(2637, .16, 'sine', .04, null, .12); }, // ka-ching
+      () => { for (let k = 0; k < 4; k++) B(330 + k * 110, .06, 'square', .05, null, k * .05); }, // combo 8 bits
+    ][i]();
+  },
   spray() { if (this.ok('spray', .25)) AUD.noise(.16, .07, 6500, 0, 3000); },
   sweep() { if (this.ok('sweep', 1)) { AUD.noise(.5, .2, 2500, 0, 600); [523, 784, 1047].forEach((f, i) => AUD.blip(f, .14, 'sine', .07, null, .1 + i * .07)); } },
   bass() { if (this.ok('bass', .1)) { AUD.blip(70, .32, 'sine', .5, 38); AUD.noise(.05, .1, 900); } },
@@ -2811,11 +2847,13 @@ const VOZ = {
   },
   pick() { try { const vs = speechSynthesis.getVoices(); this.voice = vs.find(v => /pt[-_]BR/i.test(v.lang)) || vs.find(v => /^pt/i.test(v.lang)) || null; } catch (e) { /* sem vozes */ } },
   unlock() { this.load(); },
-  play(k, vol = 1.1) {
+  play(k, vol = 1.1, rate = 1) {
     const b = this.buf[k]; if (!b || !AUD.ctx) return 0;
     const c = AUD.ctx, s = c.createBufferSource(), g = c.createGain(); g.gain.value = vol;
-    s.buffer = b; s.connect(g); g.connect(AUD.master); s.start(); return b.duration;
+    s.buffer = b; s.playbackRate.value = rate; s.connect(g); g.connect(AUD.master); s.start(); return b.duration / rate;
   },
+  // o "Entrega" gravado em versões diferentes pra não cansar
+  variants: [[1, 1.1], [1.45, 1], [.72, 1.2], [1.18, 1.05], [.88, 1.15]], vI: 0, stingT: 0,
   gap() { return 5000 + Math.random() * 2000; }, // fala de ataque no máximo a cada 5–7 s
   bobI: 0,
   bobLines: [{clip: 'entrega_bob'}, {clip: 'entrega'}],
@@ -2828,9 +2866,13 @@ const VOZ = {
   },
   say() {
     if (!this.on || !AUD.on || !AUD.ctx || G.bot || G.state !== 'play') return;
-    const now = performance.now(); if (now < this.until) return;
+    const now = performance.now();
+    if (now < this.until) { if (now > this.stingT) { this.stingT = now + 1700 + Math.random() * 1300; SFX.sting(); } return; }
+    this.stingT = now + 1500;
     if (P && P.char === 'bob') { this.bobSay(now); return; }
-    const d = this.play('entrega');
+    if (this.vI % this.variants.length === 0) this.variants.sort(() => Math.random() - .5);
+    const [rate, vol] = this.variants[this.vI++ % this.variants.length];
+    const d = this.play('entrega', vol, rate);
     if (d) { this.until = now + this.gap(); return; }
     this.load(); // só áudios gravados, nada de voz sintética
   },
